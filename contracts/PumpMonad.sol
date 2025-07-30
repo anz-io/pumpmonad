@@ -12,16 +12,16 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 using SafeERC20 for IERC20;
 using SafeCast for uint256;
 
-contract PumpStaking is Ownable2StepUpgradeable, PausableUpgradeable {
+contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
 
     // ============================= Variables =============================
     uint8 constant public MAX_DATE_SLOT = 10;
 
-    PumpToken public pumpBTC;
+    PumpToken public pumpMonad;
     IERC20 public asset;
     uint8 public assetDecimal;
 
-    // all the following variables are in the same decimal as pumpBTC (8 decimal)
+    // all the following variables are in the same decimal as pumpMonad (8 decimal)
     int256 public totalStakingAmount;      // Current amount of staked amount
     uint256 public totalStakingCap;         // Upper limit of staking amount
     uint256 public totalRequestedAmount;    // Total requested balance
@@ -61,12 +61,12 @@ contract PumpStaking is Ownable2StepUpgradeable, PausableUpgradeable {
     // ======================= Modifier & Initializer ======================
 
     modifier onlyOperator {
-        require(_msgSender() == operator, "PumpBTC: caller is not the operator");
+        require(_msgSender() == operator, "PumpMonad: caller is not the operator");
         _;
     }
 
     modifier allowUnstakeOrClaim {
-        require(!onlyAllowStake, "PumpBTC: only allow stake at first");
+        require(!onlyAllowStake, "PumpMonad: only allow stake at first");
         _;
     }
 
@@ -78,10 +78,10 @@ contract PumpStaking is Ownable2StepUpgradeable, PausableUpgradeable {
     function initialize(address _pumpTokenAddress, address _assetTokenAddress) public initializer {
         asset = IERC20(_assetTokenAddress);
         assetDecimal = ERC20(_assetTokenAddress).decimals();
-        require(assetDecimal >= 8, "PumpBTC: invalid asset token");
+        require(assetDecimal >= 8, "PumpMonad: invalid asset token");
 
-        pumpBTC = PumpToken(_pumpTokenAddress);
-        require(pumpBTC.decimals() == 8, "PumpBTC: invalid pump BTC token");
+        pumpMonad = PumpToken(_pumpTokenAddress);
+        require(pumpMonad.decimals() == 18, "PumpMonad: invalid PumpMONAD token");
 
         normalUnstakeFee = 0;     // Means 0%
         instantUnstakeFee = 300;    // Means 3%
@@ -117,21 +117,21 @@ contract PumpStaking is Ownable2StepUpgradeable, PausableUpgradeable {
     }
 
     function setStakeAssetCap(uint256 newTotalStakingCap) public onlyOwner {
-        require(newTotalStakingCap.toInt256() >= totalStakingAmount, "PumpBTC: staking cap too small");
+        require(newTotalStakingCap.toInt256() >= totalStakingAmount, "PumpMonad: staking cap too small");
 
         emit SetStakeAssetCap(totalStakingCap, newTotalStakingCap);
         totalStakingCap = newTotalStakingCap;
     }
 
     function setNormalUnstakeFee(uint256 newNormalUnstakeFee) public onlyOwner {
-        require(newNormalUnstakeFee < 10000, "PumpBTC: fee should be less than 100%");
+        require(newNormalUnstakeFee < 10000, "PumpMonad: fee should be less than 100%");
 
         emit SetNormalUnstakeFee(normalUnstakeFee, newNormalUnstakeFee);
         normalUnstakeFee = newNormalUnstakeFee;
     }
 
     function setInstantUnstakeFee(uint256 newInstantUnstakeFee) public onlyOwner {
-        require(newInstantUnstakeFee < 10000, "PumpBTC: fee should be less than 100%");
+        require(newInstantUnstakeFee < 10000, "PumpMonad: fee should be less than 100%");
 
         emit SetInstantUnstakeFee(instantUnstakeFee, newInstantUnstakeFee);
         instantUnstakeFee = newInstantUnstakeFee;
@@ -164,7 +164,7 @@ contract PumpStaking is Ownable2StepUpgradeable, PausableUpgradeable {
      *  from Babylon. `pendingStakeAmount` aims to record `X-Z`.
      */
     function withdraw() public onlyOperator {
-        require(pendingStakeAmount > 0, "PumpBTC: no pending stake amount");
+        require(pendingStakeAmount > 0, "PumpMonad: no pending stake amount");
 
         uint256 oldPendingStakeAmount = pendingStakeAmount;
         pendingStakeAmount = 0;
@@ -177,7 +177,7 @@ contract PumpStaking is Ownable2StepUpgradeable, PausableUpgradeable {
      * @param amount records `Y` on day T-10.
      */
     function deposit(uint256 amount) public onlyOperator {
-        require(amount > 0, "PumpBTC: amount should be greater than 0");
+        require(amount > 0, "PumpMonad: amount should be greater than 0");
 
         totalClaimableAmount += amount;
         emit AdminDeposit(_msgSender(), amount);
@@ -210,10 +210,10 @@ contract PumpStaking is Ownable2StepUpgradeable, PausableUpgradeable {
 
     // =========================== User functions ==========================
     function stake(uint256 amount) public whenNotPaused {
-        require(amount > 0, "PumpBTC: amount should be greater than 0");
+        require(amount > 0, "PumpMonad: amount should be greater than 0");
         require(
             totalStakingAmount + amount.toInt256() <= totalStakingCap.toInt256(), 
-            "PumpBTC: exceed staking cap"
+            "PumpMonad: exceed staking cap"
         );
 
         totalStakingAmount += amount.toInt256();
@@ -222,7 +222,7 @@ contract PumpStaking is Ownable2StepUpgradeable, PausableUpgradeable {
         emit Stake(_msgSender(), amount);
 
         asset.safeTransferFrom(_msgSender(), address(this), _adjustAmount(amount));
-        pumpBTC.mint(_msgSender(), amount);
+        pumpMonad.mint(_msgSender(), amount);
     }
 
 
@@ -230,10 +230,10 @@ contract PumpStaking is Ownable2StepUpgradeable, PausableUpgradeable {
         address user = _msgSender();
         uint8 slot = _getDateSlot(block.timestamp);
 
-        require(amount > 0, "PumpBTC: amount should be greater than 0");
+        require(amount > 0, "PumpMonad: amount should be greater than 0");
         require(
             block.timestamp - pendingUnstakeTime[user][slot] < _getPeriod()
-            || pendingUnstakeAmount[user][slot] == 0, "PumpBTC: claim the previous unstake first"
+            || pendingUnstakeAmount[user][slot] == 0, "PumpMonad: claim the previous unstake first"
         );
 
         pendingUnstakeTime[user][slot] = block.timestamp;
@@ -243,7 +243,7 @@ contract PumpStaking is Ownable2StepUpgradeable, PausableUpgradeable {
 
         emit UnstakeRequest(user, amount, slot);
 
-        pumpBTC.burn(user, amount);
+        pumpMonad.burn(user, amount);
     }
 
     function claimSlot(uint8 slot) public whenNotPaused allowUnstakeOrClaim {
@@ -251,10 +251,10 @@ contract PumpStaking is Ownable2StepUpgradeable, PausableUpgradeable {
         uint256 amount = pendingUnstakeAmount[user][slot];
         uint256 fee = amount * normalUnstakeFee / 10000;
 
-        require(amount > 0, "PumpBTC: no pending unstake");
+        require(amount > 0, "PumpMonad: no pending unstake");
         require(
             block.timestamp - pendingUnstakeTime[user][slot] >= (MAX_DATE_SLOT - 1) * _getPeriod(),
-            "PumpBTC: haven't reached the claimable time"
+            "PumpMonad: haven't reached the claimable time"
         );
 
         pendingUnstakeAmount[user][slot] = 0;
@@ -285,8 +285,8 @@ contract PumpStaking is Ownable2StepUpgradeable, PausableUpgradeable {
         }
         uint256 fee = totalAmount * normalUnstakeFee / 10000;
 
-        require(pendingCount > 0, "PumpBTC: no pending unstake");   
-        require(totalAmount > 0, "PumpBTC: haven't reached the claimable time");
+        require(pendingCount > 0, "PumpMonad: no pending unstake");   
+        require(totalAmount > 0, "PumpMonad: haven't reached the claimable time");
 
         totalClaimableAmount -= totalAmount;
         totalRequestedAmount -= totalAmount;
@@ -301,8 +301,8 @@ contract PumpStaking is Ownable2StepUpgradeable, PausableUpgradeable {
         address user = _msgSender();
         uint256 fee = amount * instantUnstakeFee / 10000;
 
-        require(amount > 0, "PumpBTC: amount should be greater than 0");
-        require(amount <= pendingStakeAmount, "PumpBTC: insufficient pending stake amount");
+        require(amount > 0, "PumpMonad: amount should be greater than 0");
+        require(amount <= pendingStakeAmount, "PumpMonad: insufficient pending stake amount");
 
         totalStakingAmount -= amount.toInt256();
         pendingStakeAmount -= amount;
@@ -310,7 +310,7 @@ contract PumpStaking is Ownable2StepUpgradeable, PausableUpgradeable {
 
         emit UnstakeInstant(user, amount);
 
-        pumpBTC.burn(user, amount);
+        pumpMonad.burn(user, amount);
         asset.safeTransfer(user, _adjustAmount(amount - fee));
     }
 

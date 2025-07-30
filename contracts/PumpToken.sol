@@ -14,7 +14,7 @@ contract PumpToken is ERC20, Ownable2Step {
         _;
     }
 
-    constructor() ERC20("pumpBTC", "pumpBTC") Ownable(_msgSender()) {}
+    constructor() ERC20("PumpMONAD", "PumpMONAD") Ownable(_msgSender()) {}
 
     function setMinter(address minter, bool isMinter_) public onlyOwner {
         isMinter[minter] = isMinter_;
@@ -27,9 +27,5 @@ contract PumpToken is ERC20, Ownable2Step {
 
     function burn(address from, uint256 amount) public onlyMinter {
         _burn(from, amount);
-    }
-
-    function decimals() public view virtual override returns (uint8) {
-        return 8;
     }
 }
