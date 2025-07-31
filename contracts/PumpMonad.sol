@@ -21,8 +21,8 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
     IERC20 public asset;
     uint8 public assetDecimal;
 
-    // all the following variables are in the same decimal as pumpMonad (8 decimal)
-    int256 public totalStakingAmount;      // Current amount of staked amount
+    // all the following variables are in the same decimal as pumpMonad (18 decimal)
+    int256 public totalStakingAmount;       // Current amount of staked amount
     uint256 public totalStakingCap;         // Upper limit of staking amount
     uint256 public totalRequestedAmount;    // Total requested balance
     uint256 public totalClaimableAmount;    // Total claimable balance
@@ -32,7 +32,7 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
     address public operator;                // Operator address, for deposit and withdraw
     uint256 public normalUnstakeFee;        // Fee for normal unstake
     uint256 public instantUnstakeFee;       // Fee for instant unstake
-    bool public onlyAllowStake;             // Only allow stake at first
+    uint8 public featureFlags;              // Flags for allowing the functions or not
 
     // User => DateSlot => Unstake request time
     mapping(address => mapping(uint8 => uint256)) public pendingUnstakeTime;
@@ -40,13 +40,20 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
     // User => DateSlot => Unstake amount
     mapping(address => mapping(uint8 => uint256)) public pendingUnstakeAmount;
 
+    // Flags for unstake type
+    uint8 private constant _NORMAL_UNSTAKE_FLAG = 1 << 0;       // 0b0001
+    uint8 private constant _INSTANT_UNSTAKE_FLAG = 1 << 1;      // 0b0010
+    uint8 private constant _CLAIM_FLAG = 1 << 2;            // 0b0100
+
 
     // =============================== Events ==============================
     event SetStakeAssetCap(uint256 oldTotalStakingCap, uint256 newTotalStakingCap);
     event SetNormalUnstakeFee(uint256 oldNormalUnstakeFee, uint256 newNormalUnstakeFee);
     event SetInstantUnstakeFee(uint256 oldInstantUnstakeFee, uint256 newInstantUnstakeFee);
     event SetOperator(address oldOperator, address newOperator);
-    event SetOnlyAllowStake(bool onlyAllowStake);
+    event SetAllowNormalUnstake(bool allowed);
+    event SetAllowInstantUnstake(bool allowed);
+    event SetAllowClaim(bool allowed);
     event FeeCollected(uint256 amount);
 
     event Stake(address indexed user, uint256 amount);
@@ -65,8 +72,18 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
         _;
     }
 
-    modifier allowUnstakeOrClaim {
-        require(!onlyAllowStake, "PumpMonad: only allow stake at first");
+    modifier allowNormalUnstake {
+        require(featureFlags & _NORMAL_UNSTAKE_FLAG != 0, "PumpMonad: normal unstake is not allowed");
+        _;
+    }
+    
+    modifier allowInstantUnstake {
+        require(featureFlags & _INSTANT_UNSTAKE_FLAG != 0, "PumpMonad: instant unstake is not allowed");
+        _;
+    }
+    
+    modifier allowClaim { 
+        require(featureFlags & _CLAIM_FLAG != 0, "PumpMonad: claim is not allowed");
         _;
     }
 
@@ -78,14 +95,14 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
     function initialize(address _pumpTokenAddress, address _assetTokenAddress) public initializer {
         asset = IERC20(_assetTokenAddress);
         assetDecimal = ERC20(_assetTokenAddress).decimals();
-        require(assetDecimal >= 8, "PumpMonad: invalid asset token");
+        require(assetDecimal == 18, "PumpMonad: invalid asset token");
 
         pumpMonad = PumpToken(_pumpTokenAddress);
         require(pumpMonad.decimals() == 18, "PumpMonad: invalid PumpMONAD token");
 
         normalUnstakeFee = 0;     // Means 0%
         instantUnstakeFee = 300;    // Means 3%
-        onlyAllowStake = true;
+        featureFlags = 0;
 
         __Ownable_init(_msgSender());
         __Ownable2Step_init();
@@ -100,10 +117,6 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
 
     function _getDateSlot(uint256 timestamp) public pure returns (uint8) {
         return uint8((timestamp + 8 hours) / _getPeriod() % MAX_DATE_SLOT);   // UTC+8 date slot
-    }
-
-    function _adjustAmount(uint256 amount) public view returns (uint256) {
-        return assetDecimal == 8 ? amount : amount * 10 ** (assetDecimal - 8);
     }
 
 
@@ -142,9 +155,31 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
         operator = newOperator;
     }
 
-    function setOnlyAllowStake(bool _onlyAllowStake) public onlyOwner {
-        emit SetOnlyAllowStake(_onlyAllowStake);
-        onlyAllowStake = _onlyAllowStake;
+    function setAllowNormalUnstake(bool allow) public onlyOwner {
+        if (allow) {
+            featureFlags |= _NORMAL_UNSTAKE_FLAG;
+        } else {
+            featureFlags &= ~_NORMAL_UNSTAKE_FLAG;
+        }
+        emit SetAllowNormalUnstake(allow);
+    }
+
+    function setAllowInstantUnstake(bool allow) public onlyOwner {
+        if (allow) {
+            featureFlags |= _INSTANT_UNSTAKE_FLAG;
+        } else {
+            featureFlags &= ~_INSTANT_UNSTAKE_FLAG;
+        }
+        emit SetAllowInstantUnstake(allow);
+    }
+
+    function setAllowClaim(bool allow) public onlyOwner {
+        if (allow) {
+            featureFlags |= _CLAIM_FLAG;
+        } else {
+            featureFlags &= ~_CLAIM_FLAG;
+        }
+        emit SetAllowClaim(allow);
     }
 
     function collectFee() public onlyOwner {
@@ -152,7 +187,7 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
         collectedFee = 0;
         emit FeeCollected(oldCollectedFee);
 
-        asset.safeTransfer(_msgSender(), _adjustAmount(oldCollectedFee));
+        asset.safeTransfer(_msgSender(), oldCollectedFee);
     }
 
 
@@ -170,7 +205,7 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
         pendingStakeAmount = 0;
         emit AdminWithdraw(_msgSender(), oldPendingStakeAmount);
 
-        asset.safeTransfer(_msgSender(), _adjustAmount(oldPendingStakeAmount));
+        asset.safeTransfer(_msgSender(), oldPendingStakeAmount);
     }
 
     /**
@@ -182,7 +217,7 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
         totalClaimableAmount += amount;
         emit AdminDeposit(_msgSender(), amount);
 
-        asset.safeTransferFrom(_msgSender(), address(this), _adjustAmount(amount));
+        asset.safeTransferFrom(_msgSender(), address(this), amount);
     }
 
     /**
@@ -197,11 +232,11 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
         emit AdminDeposit(_msgSender(), depositAmount);
 
         if (oldPendingStakeAmount > depositAmount) {
-            asset.safeTransfer(_msgSender(), _adjustAmount(oldPendingStakeAmount - depositAmount));
+            asset.safeTransfer(_msgSender(), oldPendingStakeAmount - depositAmount);
         }
         else if (oldPendingStakeAmount < depositAmount){
             asset.safeTransferFrom(
-                _msgSender(), address(this), _adjustAmount(depositAmount - oldPendingStakeAmount)
+                _msgSender(), address(this), depositAmount - oldPendingStakeAmount
             );
         }
 
@@ -221,12 +256,12 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
 
         emit Stake(_msgSender(), amount);
 
-        asset.safeTransferFrom(_msgSender(), address(this), _adjustAmount(amount));
+        asset.safeTransferFrom(_msgSender(), address(this), amount);
         pumpMonad.mint(_msgSender(), amount);
     }
 
 
-    function unstakeRequest(uint256 amount) public whenNotPaused allowUnstakeOrClaim {
+    function unstakeRequest(uint256 amount) public whenNotPaused allowNormalUnstake {
         address user = _msgSender();
         uint8 slot = _getDateSlot(block.timestamp);
 
@@ -246,7 +281,7 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
         pumpMonad.burn(user, amount);
     }
 
-    function claimSlot(uint8 slot) public whenNotPaused allowUnstakeOrClaim {
+    function claimSlot(uint8 slot) public whenNotPaused allowClaim {
         address user = _msgSender();
         uint256 amount = pendingUnstakeAmount[user][slot];
         uint256 fee = amount * normalUnstakeFee / 10000;
@@ -264,10 +299,10 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
 
         emit ClaimSlot(user, amount, slot);
 
-        asset.safeTransfer(user, _adjustAmount(amount - fee));
+        asset.safeTransfer(user, amount - fee);
     }
 
-    function claimAll() public whenNotPaused allowUnstakeOrClaim {
+    function claimAll() public whenNotPaused allowClaim {
         address user = _msgSender();
         uint256 totalAmount = 0;
         uint256 pendingCount = 0;
@@ -294,10 +329,10 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
 
         emit ClaimAll(user, totalAmount);
 
-        asset.safeTransfer(user, _adjustAmount(totalAmount - fee));
+        asset.safeTransfer(user, totalAmount - fee);
     }
 
-    function unstakeInstant(uint256 amount) public whenNotPaused allowUnstakeOrClaim {
+    function unstakeInstant(uint256 amount) public whenNotPaused allowInstantUnstake {
         address user = _msgSender();
         uint256 fee = amount * instantUnstakeFee / 10000;
 
@@ -311,7 +346,7 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
         emit UnstakeInstant(user, amount);
 
         pumpMonad.burn(user, amount);
-        asset.safeTransfer(user, _adjustAmount(amount - fee));
+        asset.safeTransfer(user, amount - fee);
     }
 
 }
