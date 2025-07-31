@@ -27,6 +27,7 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
     uint256 public totalRequestedAmount;    // Total requested balance
     uint256 public totalClaimableAmount;    // Total claimable balance
     uint256 public pendingStakeAmount;      // Today's pending staked amount
+    uint256 public instantPoolAmount;       // Instant-unstake pool amount
     uint256 public collectedFee;            // Total collected fee
 
     address public operator;                // Operator address, for deposit and withdraw
@@ -63,6 +64,8 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
     event UnstakeInstant(address indexed user, uint256 amount);
     event AdminWithdraw(address indexed owner, uint256 amount);
     event AdminDeposit(address indexed owner, uint256 amount);
+    event AdminWithdrawFromInstantPool(address indexed owner, uint256 amount);
+    event AdminDepositToInstantPool(address indexed owner, uint256 amount);
 
 
     // ======================= Modifier & Initializer ======================
@@ -239,7 +242,31 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
                 _msgSender(), address(this), depositAmount - oldPendingStakeAmount
             );
         }
+    }
 
+    /**
+     * @dev Deposit to instant-unstake pool.
+     */
+    function depositToInstantPool(uint256 amount) public onlyOperator {
+        require(amount > 0, "PumpMonad: amount should be greater than 0");
+        
+        instantPoolAmount += amount;
+        emit AdminDepositToInstantPool(_msgSender(), amount);
+
+        asset.safeTransferFrom(_msgSender(), address(this), amount);
+    }
+
+    /**
+     * @dev Withdraw from instant-unstake pool.
+     */
+    function withdrawFromInstantPool(uint256 amount) public onlyOperator {
+        require(amount > 0, "PumpMonad: amount should be greater than 0");
+        require(amount <= instantPoolAmount, "PumpMonad: insufficient instant pool amount");
+        
+        instantPoolAmount -= amount;
+        emit AdminWithdrawFromInstantPool(_msgSender(), amount);
+
+        asset.safeTransfer(_msgSender(), amount);
     }
 
 
@@ -337,10 +364,16 @@ contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
         uint256 fee = amount * instantUnstakeFee / 10000;
 
         require(amount > 0, "PumpMonad: amount should be greater than 0");
-        require(amount <= pendingStakeAmount, "PumpMonad: insufficient pending stake amount");
+        require(amount <= instantPoolAmount + pendingStakeAmount, "PumpMonad: insufficient liquidity");
+
+        if (amount <= instantPoolAmount) {
+            instantPoolAmount -= amount;
+        } else {
+            instantPoolAmount = 0;
+            pendingStakeAmount -= amount - instantPoolAmount;
+        }
 
         totalStakingAmount -= amount.toInt256();
-        pendingStakeAmount -= amount;
         collectedFee += fee;
 
         emit UnstakeInstant(user, amount);
