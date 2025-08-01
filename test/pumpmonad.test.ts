@@ -11,11 +11,11 @@ describe("pumpMonad Unit Test", function () {
   async function deployContracts() {
     const [_owner, operator, user1, user2] = await ethers.getSigners();
 
-    // Mock BTC tokens
+    // Mock Monad tokens
     const wmonad = await ethers.deployContract("MockMonad");
     const amount18 = parseUnits("100", 18);
 
-    // Pump BTC related contracts
+    // Pump Monad related contracts
     const pumpMonad = await ethers.deployContract("PumpToken");
     const pumpMonadStakingFactory = await ethers.getContractFactory("PumpMonadStaking");
     const pumpMonadStaking = (await upgrades.deployProxy(pumpMonadStakingFactory, [
@@ -81,9 +81,9 @@ describe("pumpMonad Unit Test", function () {
     const timestamp2 = 3600 * 12; // 12 hours from epoch
     const timestamp3 = 3600 * 24 * 5; // 5 days from epoch
 
-    expect(await pumpMonadStaking._getDateSlot(timestamp1)).to.equal(0); // UTC+8 => still 0
-    expect(await pumpMonadStaking._getDateSlot(timestamp2)).to.equal(0); // UTC+8 => still 0
-    expect(await pumpMonadStaking._getDateSlot(timestamp3)).to.equal(5 % 10); // UTC+8 => 5 % 10 = 5
+    expect(await pumpMonadStaking._getDateSlot(timestamp1)).to.equal(0); // UTC+18 => still 0
+    expect(await pumpMonadStaking._getDateSlot(timestamp2)).to.equal(0); // UTC+18 => still 0
+    expect(await pumpMonadStaking._getDateSlot(timestamp3)).to.equal(5 % 10); // UTC+18 => 5 % 10 = 5
   });
 
   // Owner functions test
@@ -191,10 +191,12 @@ describe("pumpMonad Unit Test", function () {
     const { pumpMonadStaking, wmonad } = await loadFixture(deployContracts);
     const [owner, operator, user1, user2] = await ethers.getSigners();
 
+    await pumpMonadStaking.setAllowInstantUnstake(true)
+
     const ownerBalanceBefore = await wmonad.balanceOf(owner);
 
-    await pumpMonadStaking.connect(user2).stake(parseUnits("0.2", 8));
-    await pumpMonadStaking.connect(user2).unstakeInstant(parseUnits("0.2", 8));
+    await pumpMonadStaking.connect(user2).stake(parseUnits("0.2", 18));
+    await pumpMonadStaking.connect(user2).unstakeInstant(parseUnits("0.2", 18));
 
     const collectFeeBefore = await pumpMonadStaking.collectedFee();
 
@@ -224,7 +226,7 @@ describe("pumpMonad Unit Test", function () {
     const { pumpMonadStaking, wmonad } = await loadFixture(deployContracts);
     const [owner, operator, user1, user2] = await ethers.getSigners();
 
-    const stakeAmount = parseUnits("1", 8);
+    const stakeAmount = parseUnits("1", 18);
     await pumpMonadStaking.connect(user1).stake(stakeAmount);
 
     const operatorBalanceBefore = await wmonad.balanceOf(operator.address);
@@ -242,11 +244,11 @@ describe("pumpMonad Unit Test", function () {
     const { pumpMonadStaking } = await loadFixture(deployContracts);
     const [owner, operator, user1, user2] = await ethers.getSigners();
 
-    const stakeAmount = parseUnits("1", 8);
+    const stakeAmount = parseUnits("1", 18);
     await pumpMonadStaking.connect(user1).stake(stakeAmount);
 
     await expect(pumpMonadStaking.connect(user2).withdraw()).to.be.revertedWith(
-      "PumpBTC: caller is not the operator"
+      "PumpMonad: caller is not the operator"
     );
   });
 
@@ -255,7 +257,7 @@ describe("pumpMonad Unit Test", function () {
     const accounts = await ethers.getSigners();
     const operator = accounts[1];
 
-    const depositAmount = parseUnits("10", 8);
+    const depositAmount = parseUnits("10", 18);
     const operatorBalanceBefore = await wmonad.balanceOf(operator.address);
 
     await expect(pumpMonadStaking.connect(operator).deposit(depositAmount))
@@ -271,22 +273,22 @@ describe("pumpMonad Unit Test", function () {
     const { pumpMonadStaking } = await loadFixture(deployContracts);
     const accounts = await ethers.getSigners();
     const user1 = accounts[2];
-    const depositAmount = parseUnits("10", 8);
+    const depositAmount = parseUnits("10", 18);
     await expect(
       pumpMonadStaking.connect(user1).deposit(depositAmount)
-    ).to.be.revertedWith("PumpBTC: caller is not the operator");
+    ).to.be.revertedWith("PumpMonad: caller is not the operator");
   });
 
   it("should allow operator to withdraw and deposit", async function () {
     const { pumpMonadStaking, wmonad } = await loadFixture(deployContracts);
     const [owner, operator, user1, user2] = await ethers.getSigners();
 
-    const stakeAmount = parseUnits("1", 8);
+    const stakeAmount = parseUnits("1", 18);
     await pumpMonadStaking.connect(user1).stake(stakeAmount);
 
     const operatorBalanceBefore = await wmonad.balanceOf(operator.address);
 
-    const depositAmount = parseUnits("0.5", 8);
+    const depositAmount = parseUnits("0.5", 18);
     await expect(
       pumpMonadStaking.connect(operator).withdrawAndDeposit(depositAmount)
     )
@@ -304,13 +306,13 @@ describe("pumpMonad Unit Test", function () {
     const { pumpMonadStaking } = await loadFixture(deployContracts);
     const [owner, operator, user1, user2] = await ethers.getSigners();
 
-    const stakeAmount = parseUnits("1", 8);
+    const stakeAmount = parseUnits("1", 18);
     await pumpMonadStaking.connect(user1).stake(stakeAmount);
 
-    const depositAmount = parseUnits("0.5", 8);
+    const depositAmount = parseUnits("0.5", 18);
     await expect(
       pumpMonadStaking.connect(user2).withdrawAndDeposit(depositAmount)
-    ).to.be.revertedWith("PumpBTC: caller is not the operator");
+    ).to.be.revertedWith("PumpMonad: caller is not the operator");
   });
 
   // User functions test
@@ -319,7 +321,7 @@ describe("pumpMonad Unit Test", function () {
     const accounts = await ethers.getSigners();
     const user1 = accounts[2];
 
-    const stakeAmount = parseUnits("1", 8);
+    const stakeAmount = parseUnits("1", 18);
 
     const userBalanceBefore = await wmonad.balanceOf(user1.address);
 
@@ -340,7 +342,7 @@ describe("pumpMonad Unit Test", function () {
 
     await pumpMonadStaking.connect(owner).pause();
 
-    const stakeAmount = parseUnits("1", 8);
+    const stakeAmount = parseUnits("1", 18);
     await expect(
       pumpMonadStaking.connect(user1).stake(stakeAmount)
     ).to.be.revertedWithCustomError(pumpMonadStaking, "EnforcedPause");
@@ -352,7 +354,7 @@ describe("pumpMonad Unit Test", function () {
     const user1 = accounts[2];
 
     await expect(pumpMonadStaking.connect(user1).stake(0)).to.be.revertedWith(
-      "PumpBTC: amount should be greater than 0"
+      "PumpMonad: amount should be greater than 0"
     );
   });
 
@@ -367,19 +369,21 @@ describe("pumpMonad Unit Test", function () {
     await pumpMonadStaking.connect(user1).stake(stakeAmount);
 
     await expect(pumpMonadStaking.connect(user1).stake(1)).to.be.revertedWith(
-      "PumpBTC: exceed staking cap"
+      "PumpMonad: exceed staking cap"
     );
   });
 
   it("should allow user to request unstake", async function () {
     const { pumpMonad, pumpMonadStaking, wmonad } = await loadFixture(deployContracts);
     const [owner, operator, user1, user2] = await ethers.getSigners();
+    
+    await pumpMonadStaking.setAllowNormalUnstake(true)
 
-    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 8));
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 8));
-    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 8));
+    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 18));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 18));
+    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 18));
 
     const block = await ethers.provider.getBlock("latest");
     if (block === null) {
@@ -389,76 +393,83 @@ describe("pumpMonad Unit Test", function () {
     const timestamp = block.timestamp;
     const slot = await pumpMonadStaking._getDateSlot(timestamp);
 
-    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.5", 8));
+    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.5", 18));
 
     const userPendingUnstakeAmount = await pumpMonadStaking.pendingUnstakeAmount(
       user1.address,
       slot
     );
 
-    expect(userPendingUnstakeAmount).to.equal(parseUnits("0.5", 8));
+    expect(userPendingUnstakeAmount).to.equal(parseUnits("0.5", 18));
     expect(await pumpMonadStaking.totalStakingAmount()).to.equal(
-      parseUnits("0.5", 8)
+      parseUnits("0.5", 18)
     );
     expect(await pumpMonadStaking.totalRequestedAmount()).to.equal(
-      parseUnits("0.5", 8)
+      parseUnits("0.5", 18)
     );
   });
 
-  it("should revert PumpBTC: claim the previous unstake first", async function () {
+  it("should revert PumpMonad: claim the previous unstake first", async function () {
     const { pumpMonad, pumpMonadStaking, wmonad } = await loadFixture(deployContracts);
     const [owner, operator, user1, user2] = await ethers.getSigners();
 
-    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 8));
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 8));
-    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 8));
+    await pumpMonadStaking.setAllowNormalUnstake(true)
+
+    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 18));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 18));
+    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 18));
 
     await expect(
-      pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.1", 8))
+      pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.1", 18))
     );
 
     await time.increase(86400 * 7);
-    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.1", 8));
+    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.1", 18));
 
     await time.increase(86400 * 7);
-    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.2", 8));
+    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.2", 18));
 
     await time.increase(86400 * 3);
     await expect(
-      pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.1", 8))
-    ).to.be.revertedWith("PumpBTC: claim the previous unstake first");
+      pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.1", 18))
+    ).to.be.revertedWith("PumpMonad: claim the previous unstake first");
   });
 
-  it("should PumpBTC: amount should be greater than 0", async function () {
+  it("should PumpMonad: amount should be greater than 0", async function () {
     const { pumpMonad, pumpMonadStaking, wmonad } = await loadFixture(deployContracts);
     const [owner, operator, user1, user2] = await ethers.getSigners();
 
-    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 8));
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 8));
-    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 8));
+    await pumpMonadStaking.setAllowNormalUnstake(true)
+
+    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 18));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 18));
+    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 18));
 
     await expect(
-      pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0", 8))
-    ).to.be.revertedWith("PumpBTC: amount should be greater than 0");
+      pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0", 18))
+    ).to.be.revertedWith("PumpMonad: amount should be greater than 0");
   });
 
   it("should allow user to claim unstake amount after the claimable time", async function () {
     const { pumpMonad, pumpMonadStaking, wmonad } = await loadFixture(deployContracts);
     const [owner, operator, user1, user2] = await ethers.getSigners();
 
-    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 8));
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 8));
-    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 8));
+    await pumpMonadStaking.setAllowNormalUnstake(true)
+    await pumpMonadStaking.setAllowClaim(true)
 
-    await pumpMonadStaking.connect(operator).deposit(parseUnits("0.5", 8));
+    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 18));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 18));
+    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 18));
 
-    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.5", 8));
+    await pumpMonadStaking.connect(operator).deposit(parseUnits("0.5", 18));
+
+    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.5", 18));
     const block = await ethers.provider.getBlock("latest");
     if (block === null) {
       throw new Error("Failed to fetch the latest block");
@@ -468,9 +479,9 @@ describe("pumpMonad Unit Test", function () {
     await time.increase(86400 * 9);
     expect(await pumpMonadStaking.connect(user1).claimSlot(slot))
       .to.emit(pumpMonadStaking, "ClaimSlot")
-      .withArgs(user1.address, parseUnits("0.5", 8), slot);
+      .withArgs(user1.address, parseUnits("0.5", 18), slot);
 
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99.5", 8));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99.5", 18));
     expect(await pumpMonadStaking.totalClaimableAmount()).to.equal(0);
     expect(await pumpMonadStaking.totalRequestedAmount()).to.equal(0);
     expect(
@@ -481,6 +492,9 @@ describe("pumpMonad Unit Test", function () {
   it("should revert when there is no pending unstake", async function () {
     const { pumpMonadStaking } = await loadFixture(deployContracts);
     const accounts = await ethers.getSigners();
+
+    await pumpMonadStaking.setAllowClaim(true)
+
     const user1 = accounts[2];
 
     const block = await ethers.provider.getBlock("latest");
@@ -490,7 +504,7 @@ describe("pumpMonad Unit Test", function () {
     const slot = await pumpMonadStaking._getDateSlot(block.timestamp);
 
     await expect(pumpMonadStaking.connect(user1).claimSlot(slot)).to.be.revertedWith(
-      "PumpBTC: no pending unstake"
+      "PumpMonad: no pending unstake"
     );
   });
 
@@ -499,13 +513,16 @@ describe("pumpMonad Unit Test", function () {
     const accounts = await ethers.getSigners();
     const user1 = accounts[2];
 
-    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 8));
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 8));
-    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 8));
+    await pumpMonadStaking.setAllowNormalUnstake(true)
+    await pumpMonadStaking.setAllowClaim(true)
 
-    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.5", 8));
+    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 18));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 18));
+    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 18));
+
+    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.5", 18));
     const block = await ethers.provider.getBlock("latest");
     if (block === null) {
       throw new Error("Failed to fetch the latest block");
@@ -515,7 +532,7 @@ describe("pumpMonad Unit Test", function () {
     await time.increase(86400 * 2);
 
     await expect(pumpMonadStaking.connect(user1).claimSlot(slot)).to.be.revertedWith(
-      "PumpBTC: haven't reached the claimable time"
+      "PumpMonad: haven't reached the claimable time"
     );
   });
 
@@ -523,27 +540,30 @@ describe("pumpMonad Unit Test", function () {
     const { pumpMonad, pumpMonadStaking, wmonad } = await loadFixture(deployContracts);
     const [owner, operator, user1, user2] = await ethers.getSigners();
 
-    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 8));
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 8));
-    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 8));
+    await pumpMonadStaking.setAllowNormalUnstake(true)
+    await pumpMonadStaking.setAllowClaim(true)
 
-    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.3", 8));
+    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 18));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 18));
+    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 18));
 
-    await pumpMonadStaking.connect(operator).deposit(parseUnits("0.5", 8));
+    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.3", 18));
+
+    await pumpMonadStaking.connect(operator).deposit(parseUnits("0.5", 18));
 
     expect(await pumpMonad.balanceOf(user1.address)).to.equal(
-      parseUnits("0.7", 8)
+      parseUnits("0.7", 18)
     );
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 8));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 18));
 
     await time.increase(86400 * 9);
     await pumpMonadStaking.connect(user1).claimAll();
 
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99.3", 8));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99.3", 18));
     expect(await pumpMonadStaking.totalClaimableAmount()).to.equal(
-      parseUnits("0.2", 8)
+      parseUnits("0.2", 18)
     );
     expect(await pumpMonadStaking.totalRequestedAmount()).to.equal(0);
   });
@@ -551,10 +571,13 @@ describe("pumpMonad Unit Test", function () {
   it("should revert when there is no claimable amount", async function () {
     const { pumpMonadStaking } = await loadFixture(deployContracts);
     const accounts = await ethers.getSigners();
+
+    await pumpMonadStaking.setAllowClaim(true)
+
     const user1 = accounts[2];
 
     await expect(pumpMonadStaking.connect(user1).claimAll()).to.be.revertedWith(
-      "PumpBTC: no pending unstake"
+      "PumpMonad: no pending unstake"
     );
   });
 
@@ -562,23 +585,26 @@ describe("pumpMonad Unit Test", function () {
     const { pumpMonad, pumpMonadStaking, wmonad } = await loadFixture(deployContracts);
     const [owner, operator, user1, user2] = await ethers.getSigners();
 
-    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 8));
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 8));
-    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 8));
+    await pumpMonadStaking.setAllowNormalUnstake(true)
+    await pumpMonadStaking.setAllowClaim(true)
 
-    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.3", 8));
+    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 18));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 18));
+    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 18));
 
-    await pumpMonadStaking.connect(operator).deposit(parseUnits("0.5", 8));
+    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.3", 18));
+
+    await pumpMonadStaking.connect(operator).deposit(parseUnits("0.5", 18));
 
     expect(await pumpMonad.balanceOf(user1.address)).to.equal(
-      parseUnits("0.7", 8)
+      parseUnits("0.7", 18)
     );
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 8));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 18));
 
     await expect(pumpMonadStaking.connect(user1).claimAll()).to.be.revertedWith(
-      "PumpBTC: haven't reached the claimable time"
+      "PumpMonad: haven't reached the claimable time"
     );
   });
 
@@ -586,28 +612,30 @@ describe("pumpMonad Unit Test", function () {
     const { pumpMonad, pumpMonadStaking, wmonad } = await loadFixture(deployContracts);
     const [owner, operator, user1, user2] = await ethers.getSigners();
 
-    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 8));
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 8));
-    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 8));
+    await pumpMonadStaking.setAllowInstantUnstake(true)
 
-    await pumpMonadStaking.connect(user1).unstakeInstant(parseUnits("0.5", 8));
+    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 18));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 18));
+    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 18));
+
+    await pumpMonadStaking.connect(user1).unstakeInstant(parseUnits("0.5", 18));
 
     const fee = await pumpMonadStaking.collectedFee();
-    const amountAfterFee = parseUnits("0.5", 8) - fee;
+    const amountAfterFee = parseUnits("0.5", 18) - fee;
 
     expect(await wmonad.balanceOf(user1.address)).to.equal(
-      parseUnits("99", 8) + amountAfterFee
+      parseUnits("99", 18) + amountAfterFee
     );
     expect(await pumpMonad.balanceOf(user1.address)).to.equal(
-      parseUnits("0.5", 8)
+      parseUnits("0.5", 18)
     );
     expect(await pumpMonadStaking.totalStakingAmount()).to.equal(
-      parseUnits("0.5", 8)
+      parseUnits("0.5", 18)
     );
     expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(
-      parseUnits("0.5", 8)
+      parseUnits("0.5", 18)
     );
     expect(await pumpMonadStaking.collectedFee()).to.equal(fee);
   });
@@ -616,31 +644,36 @@ describe("pumpMonad Unit Test", function () {
     const { pumpMonad, pumpMonadStaking, wmonad } = await loadFixture(deployContracts);
     const [owner, operator, user1, user2] = await ethers.getSigners();
 
-    await pumpMonadStaking.connect(user1).stake(parseUnits("0.5", 8));
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99.5", 8));
+    await pumpMonadStaking.setAllowInstantUnstake(true)
+
+    await pumpMonadStaking.connect(user1).stake(parseUnits("0.5", 18));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99.5", 18));
     expect(await pumpMonad.balanceOf(user1.address)).to.equal(
-      parseUnits("0.5", 8)
+      parseUnits("0.5", 18)
     );
     expect(await pumpMonadStaking.totalStakingAmount()).to.equal(
-      parseUnits("0.5", 8)
+      parseUnits("0.5", 18)
     );
     expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(
-      parseUnits("0.5", 8)
+      parseUnits("0.5", 18)
     );
 
     await expect(
-      pumpMonadStaking.connect(user1).unstakeInstant(parseUnits("1", 8))
-    ).to.be.revertedWith("PumpBTC: insufficient pending stake amount");
+      pumpMonadStaking.connect(user1).unstakeInstant(parseUnits("1", 18))
+    ).to.be.revertedWith("PumpMonad: insufficient liquidity");
   });
 
   it("should revert when unstake amount is zero", async function () {
     const { pumpMonadStaking } = await loadFixture(deployContracts);
     const accounts = await ethers.getSigners();
+
+    await pumpMonadStaking.setAllowInstantUnstake(true)
+    
     const user1 = accounts[2];
 
     await expect(
       pumpMonadStaking.connect(user1).unstakeInstant(0)
-    ).to.be.revertedWith("PumpBTC: amount should be greater than 0");
+    ).to.be.revertedWith("PumpMonad: amount should be greater than 0");
   });
 
   // Finish user journey of staking test
@@ -648,74 +681,78 @@ describe("pumpMonad Unit Test", function () {
     const { pumpMonad, pumpMonadStaking, wmonad } = await loadFixture(deployContracts);
     const [owner, operator, user1, user2] = await ethers.getSigners();
 
-    // Day 1: User1 stakes 1 WBTC
-    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 8));
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 8));
-    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 8));
-    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 8));
+    await pumpMonadStaking.setAllowNormalUnstake(true)
+    await pumpMonadStaking.setAllowInstantUnstake(true)
+    await pumpMonadStaking.setAllowClaim(true)
+
+    // Day 1: User1 stakes 1 WMONAD
+    await pumpMonadStaking.connect(user1).stake(parseUnits("1", 18));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 18));
+    expect(await pumpMonad.balanceOf(user1.address)).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("1", 18));
+    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("1", 18));
 
     await pumpMonadStaking.connect(operator).withdraw();
-    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("0", 8));
+    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("0", 18));
 
-    // Day 2: User2 stakes 2 WBTC
+    // Day 2: User2 stakes 2 WMONAD
     await time.increase(86400);
-    await pumpMonadStaking.connect(user2).stake(parseUnits("2", 8));
-    expect(await wmonad.balanceOf(user2.address)).to.equal(parseUnits("98", 8));
-    expect(await pumpMonad.balanceOf(user2.address)).to.equal(parseUnits("2", 8));
-    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("3", 8));
-    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("2", 8));
+    await pumpMonadStaking.connect(user2).stake(parseUnits("2", 18));
+    expect(await wmonad.balanceOf(user2.address)).to.equal(parseUnits("98", 18));
+    expect(await pumpMonad.balanceOf(user2.address)).to.equal(parseUnits("2", 18));
+    expect(await pumpMonadStaking.totalStakingAmount()).to.equal(parseUnits("3", 18));
+    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("2", 18));
 
     await pumpMonadStaking.connect(operator).withdraw();
-    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("0", 8));
+    expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(parseUnits("0", 18));
 
-    // Day 5: User1 unstake 0.3 WBTC
+    // Day 5: User1 unstake 0.3 WMONAD
     await time.increase(86400 * 3);
-    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.3", 8));
+    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.3", 18));
 
     // Day 12: User1 can't unstake yet, and request again
     await time.increase(86400 * 7);
     await expect(pumpMonadStaking.connect(user1).claimAll()).to.be.revertedWith(
-      "PumpBTC: haven't reached the claimable time"
+      "PumpMonad: haven't reached the claimable time"
     );
-    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.1", 8));
+    await pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.1", 18));
 
     // Day 15: User1 can't unstake again before claim
     await time.increase(86400 * 3);
-    await pumpMonadStaking.connect(operator).deposit(parseUnits("0.5", 8));
+    await pumpMonadStaking.connect(operator).deposit(parseUnits("0.5", 18));
     await expect(
-      pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.1", 8))
-    ).to.be.revertedWith("PumpBTC: claim the previous unstake first");
+      pumpMonadStaking.connect(user1).unstakeRequest(parseUnits("0.1", 18))
+    ).to.be.revertedWith("PumpMonad: claim the previous unstake first");
 
     // Day 15: User1 claim the unstake
     expect(await pumpMonad.balanceOf(user1.address)).to.equal(
-      parseUnits("0.6", 8)
+      parseUnits("0.6", 18)
     );
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 8));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99", 18));
     await pumpMonadStaking.connect(user1).claimAll();
-    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99.3", 8));
+    expect(await wmonad.balanceOf(user1.address)).to.equal(parseUnits("99.3", 18));
 
     // Day 16: User2 unstake instantly
     await time.increase(86400);
     await expect(
-      pumpMonadStaking.connect(user2).unstakeInstant(parseUnits("0.2", 8))
-    ).to.be.revertedWith("PumpBTC: insufficient pending stake amount");
-    await pumpMonadStaking.connect(user1).stake(parseUnits("0.5", 8));
-    await pumpMonadStaking.connect(user2).unstakeInstant(parseUnits("0.2", 8)); // 0.2 * (1-3%) = 0.194
+      pumpMonadStaking.connect(user2).unstakeInstant(parseUnits("0.2", 18))
+    ).to.be.revertedWith("PumpMonad: insufficient liquidity");
+    await pumpMonadStaking.connect(user1).stake(parseUnits("0.5", 18));
+    await pumpMonadStaking.connect(user2).unstakeInstant(parseUnits("0.2", 18)); // 0.2 * (1-3%) = 0.194
     expect(await pumpMonad.balanceOf(user2.address)).to.equal(
-      parseUnits("1.8", 8)
+      parseUnits("1.8", 18)
     );
     expect(await wmonad.balanceOf(user2.address)).to.equal(
-      parseUnits("98.194", 8)
+      parseUnits("98.194", 18)
     );
     expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(
-      parseUnits("0.3", 8)
+      parseUnits("0.3", 18)
     );
 
     // Day 16: Collect fees
     const balanceBefore = await wmonad.balanceOf(owner.address);
     await pumpMonadStaking.collectFee();
     const balanceAfter = await wmonad.balanceOf(owner.address);
-    expect(balanceAfter - balanceBefore).to.equal(parseUnits("0.006", 8));
+    expect(balanceAfter - balanceBefore).to.equal(parseUnits("0.006", 18));
   });
 });
