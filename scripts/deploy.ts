@@ -23,7 +23,7 @@ async function main() {
   await wmonad.mint(owner.address, parseEther("10000"))
   await wmonad.approve(await pumpmonadstaking.getAddress(), parseEther("10000"))
 
-  await pumpmonadstaking.stake(parseEther("100"))
+  await pumpmonadstaking.stake({ value: parseEther("100") })
 }
 
 main()
