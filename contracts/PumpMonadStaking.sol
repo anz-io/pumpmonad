@@ -12,7 +12,7 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 using SafeERC20 for IERC20;
 using SafeCast for uint256;
 
-contract PumpMonad is Ownable2StepUpgradeable, PausableUpgradeable {
+contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable {
 
     // ============================= Variables =============================
     uint8 constant public MAX_DATE_SLOT = 10;
