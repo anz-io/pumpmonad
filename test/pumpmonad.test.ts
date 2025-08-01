@@ -11,10 +11,8 @@ const delta = parseEther("0.001")
 
 describe("pumpMonad Unit Test", function () {
   async function deployContracts() {
-    const [_owner, operator, user1, user2] = await ethers.getSigners();
+    const [_owner, operator] = await ethers.getSigners();
 
-    // Mock Monad tokens
-    const wmonad = await ethers.deployContract("MockMonad");
     const amount18 = parseUnits("100", 18);
 
     // Pump Monad related contracts
@@ -28,16 +26,6 @@ describe("pumpMonad Unit Test", function () {
     await pumpMonad.setMinter(pumpMonadStakingAddress, true);
     await pumpMonadStaking.setStakeAssetCap(amount18 * 3n);
     await pumpMonadStaking.setOperator(operator.address);
-
-    // Distribute tokens, approve for staking
-    await wmonad.transfer(operator.address, amount18);
-    await wmonad.transfer(user1.address, amount18);
-    await wmonad.transfer(user2.address, amount18);
-    await wmonad.connect(operator).approve(pumpMonadStakingAddress, amount18);
-    await wmonad.connect(user1).approve(pumpMonadStakingAddress, amount18);
-    await wmonad.connect(user2).approve(pumpMonadStakingAddress, amount18);
-    await wmonad.approve(pumpMonadStakingAddress, amount18);
-
 
     return { pumpMonad, pumpMonadStaking };
   }

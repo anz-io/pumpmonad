@@ -12,11 +12,21 @@ const config: HardhatUserConfig = {
         process.env.PRIVATE_KEY_ADMIN!,
       ]
     },
+    monadtest: {
+      url: "https://testnet-rpc.monad.xyz/",
+      accounts: [
+        process.env.PRIVATE_KEY_ADMIN!,
+      ]
+    }
   },
   etherscan: {
     apiKey: {
       sepolia: process.env.API_ETHERSCAN!,
     }
+  },
+  sourcify: {
+    enabled: true,
+    apiUrl: "https://sourcify-api.bbvision.io"
   }
 };
 
