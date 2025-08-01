@@ -737,7 +737,10 @@ describe("pumpMonad Unit Test", function () {
     await expect(
       pumpMonadStaking.connect(user2).unstakeInstant(parseUnits("0.2", 18))
     ).to.be.revertedWith("PumpMonad: insufficient liquidity");
-    await pumpMonadStaking.connect(user1).stake(parseUnits("0.5", 18));
+    await pumpMonadStaking.connect(user1).stake(parseUnits("0.5", 18))
+    await pumpMonadStaking.connect(operator).depositToInstantPool(parseUnits("0.5", 18));
+    expect(await pumpMonadStaking.instantPoolAmount()).to.equal(parseUnits("0.5", 18));
+
     await pumpMonadStaking.connect(user2).unstakeInstant(parseUnits("0.2", 18)); // 0.2 * (1-3%) = 0.194
     expect(await pumpMonad.balanceOf(user2.address)).to.equal(
       parseUnits("1.8", 18)
@@ -746,6 +749,9 @@ describe("pumpMonad Unit Test", function () {
       parseUnits("98.194", 18)
     );
     expect(await pumpMonadStaking.pendingStakeAmount()).to.equal(
+      parseUnits("0.5", 18)
+    );
+    expect(await pumpMonadStaking.instantPoolAmount()).to.equal(
       parseUnits("0.3", 18)
     );
 
@@ -754,5 +760,10 @@ describe("pumpMonad Unit Test", function () {
     await pumpMonadStaking.collectFee();
     const balanceAfter = await wmonad.balanceOf(owner.address);
     expect(balanceAfter - balanceBefore).to.equal(parseUnits("0.006", 18));
+
+    await pumpMonadStaking.connect(operator).withdrawFromInstantPool(
+      parseUnits("0.3", 18)
+    );
+    expect(await pumpMonadStaking.instantPoolAmount()).to.equal(parseUnits("0", 18));
   });
 });
