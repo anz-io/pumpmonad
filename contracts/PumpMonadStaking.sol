@@ -5,6 +5,7 @@ import "./PumpToken.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
@@ -12,6 +13,7 @@ import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol
 
 using SafeERC20 for IERC20;
 using SafeCast for uint256;
+using Address for address payable;
 
 contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
 
@@ -182,12 +184,12 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
 
     function collectFee() public onlyOwner {
         require(collectedFee > 0, "PumpMonad: no collected fee");
-        
+
         uint256 oldCollectedFee = collectedFee;
         collectedFee = 0;
         emit FeeCollected(oldCollectedFee);
 
-        payable(_msgSender()).transfer(oldCollectedFee);
+        payable(_msgSender()).sendValue(oldCollectedFee);
     }
 
 
@@ -205,7 +207,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
         pendingStakeAmount = 0;
         emit AdminWithdraw(_msgSender(), oldPendingStakeAmount);
 
-        payable(_msgSender()).transfer(oldPendingStakeAmount);
+        payable(_msgSender()).sendValue(oldPendingStakeAmount);
     }
 
     /**
@@ -231,7 +233,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
         emit AdminWithdraw(_msgSender(), oldPendingStakeAmount);
         emit AdminDeposit(_msgSender(), depositAmount);
 
-        payable(_msgSender()).transfer(oldPendingStakeAmount);
+        payable(_msgSender()).sendValue(oldPendingStakeAmount);
     }
 
     /**
@@ -255,7 +257,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
         instantPoolAmount -= amount;
         emit AdminWithdrawFromInstantPool(_msgSender(), amount);
 
-        payable(_msgSender()).transfer(amount);
+        payable(_msgSender()).sendValue(amount);
     }
 
 
@@ -315,7 +317,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
 
         emit ClaimSlot(user, amount, slot);
 
-        payable(user).transfer(amount - fee);
+        payable(user).sendValue(amount - fee);
     }
 
     function claimAll() public nonReentrant whenNotPaused allowClaim {
@@ -345,7 +347,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
 
         emit ClaimAll(user, totalAmount);
 
-        payable(user).transfer(totalAmount - fee);
+        payable(user).sendValue(totalAmount - fee);
     }
 
     function unstakeInstant(uint256 amount) public nonReentrant whenNotPaused allowInstantUnstake {
@@ -369,7 +371,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
         emit UnstakeInstant(user, amount);
 
         pumpMonad.burn(user, amount);
-        payable(user).transfer(amount - fee);
+        payable(user).sendValue(amount - fee);
     }
 
 }
