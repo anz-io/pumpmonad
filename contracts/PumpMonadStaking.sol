@@ -193,8 +193,8 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
     /**
      * @dev Suppose that the total staking amount is X, total unstaking request amount is 
      *  Y, and total unstaking-instantly amount is Z. Then the admin should withdraw X-Z, 
-     *  and then deposit X-Z to Babylon. Meanwhile, the admin should request withdraw Y
-     *  from Babylon. `pendingStakeAmount` aims to record `X-Z`.
+     *  and then deposit X-Z to Monad chain. Meanwhile, the admin should request withdraw Y
+     *  from Monad chain. `pendingStakeAmount` aims to record `X-Z`.
      */
     function withdraw() public nonReentrant onlyOperator {
         require(pendingStakeAmount > 0, "PumpMonad: no pending stake amount");
