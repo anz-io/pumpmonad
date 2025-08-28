@@ -181,6 +181,8 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
     }
 
     function collectFee() public onlyOwner {
+        require(collectedFee > 0, "PumpMonad: no collected fee");
+        
         uint256 oldCollectedFee = collectedFee;
         collectedFee = 0;
         emit FeeCollected(oldCollectedFee);
