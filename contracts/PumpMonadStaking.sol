@@ -21,7 +21,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
     PumpToken public pumpMonad;
 
     // all the following variables are in the same decimal as pumpMonad (18 decimal)
-    int256 public totalStakingAmount;       // Current amount of staked amount
+    uint256 public totalStakingAmount;       // Current amount of staked amount
     uint256 public totalStakingCap;         // Upper limit of staking amount
     uint256 public totalRequestedAmount;    // Total requested balance
     uint256 public totalClaimableAmount;    // Total claimable balance
@@ -128,7 +128,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
     }
 
     function setStakeAssetCap(uint256 newTotalStakingCap) public onlyOwner {
-        require(newTotalStakingCap.toInt256() >= totalStakingAmount, "PumpMonad: staking cap too small");
+        require(newTotalStakingCap >= totalStakingAmount, "PumpMonad: staking cap too small");
 
         emit SetStakeAssetCap(totalStakingCap, newTotalStakingCap);
         totalStakingCap = newTotalStakingCap;
@@ -262,11 +262,11 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
         uint256 amount = msg.value;
         require(amount > 0, "PumpMonad: amount should be greater than 0");
         require(
-            totalStakingAmount + amount.toInt256() <= totalStakingCap.toInt256(), 
+            totalStakingAmount + amount <= totalStakingCap, 
             "PumpMonad: exceed staking cap"
         );
 
-        totalStakingAmount += amount.toInt256();
+        totalStakingAmount += amount;
         pendingStakeAmount += amount;
 
         emit Stake(_msgSender(), amount);
@@ -287,7 +287,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
 
         pendingUnstakeTime[user][slot] = block.timestamp;
         pendingUnstakeAmount[user][slot] += amount;
-        totalStakingAmount -= amount.toInt256();
+        totalStakingAmount -= amount;
         totalRequestedAmount += amount;
 
         emit UnstakeRequest(user, amount, slot);
@@ -360,7 +360,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
             pendingStakeAmount -= amount - instantPoolAmount;
         }
 
-        totalStakingAmount -= amount.toInt256();
+        totalStakingAmount -= amount;
         collectedFee += fee;
 
         emit UnstakeInstant(user, amount);
