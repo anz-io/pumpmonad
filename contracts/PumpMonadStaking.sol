@@ -356,8 +356,9 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
         if (amount <= instantPoolAmount) {
             instantPoolAmount -= amount;
         } else {
+            uint256 amountFromPending = amount - instantPoolAmount;
             instantPoolAmount = 0;
-            pendingStakeAmount -= amount - instantPoolAmount;
+            pendingStakeAmount -= amountFromPending;
         }
 
         totalStakingAmount -= amount;
