@@ -20,13 +20,12 @@ const config: HardhatUserConfig = {
     }
   },
   etherscan: {
-    apiKey: {
-      sepolia: process.env.API_ETHERSCAN!,
-    }
+    enabled: false
   },
   sourcify: {
     enabled: true,
-    apiUrl: "https://sourcify-api.bbvision.io"
+    apiUrl: "https://sourcify-api-monad.blockvision.org",
+    browserUrl: "https://testnet.monadexplorer.com"
   }
 };
 
