@@ -1,21 +1,21 @@
 import "dotenv/config"
 import { deployContract, deployUpgradeableContract } from "./utils"
-import { PumpMonadStaking, PumpToken } from "../typechain-types"
+import { PumpHypeStaking, PumpToken } from "../typechain-types"
 import { parseEther } from "ethers"
 
 async function main() {
-  const pumpmonad = await deployContract("PumpToken", [], true) as PumpToken
-  const pumpmonadstaking = await deployUpgradeableContract(
-    "PumpMonadStaking", [await pumpmonad.getAddress()], true
-  ) as PumpMonadStaking
+  const pumphype = await deployContract("PumpToken", [], true) as PumpToken
+  const pumphypestaking = await deployUpgradeableContract(
+    "PumpHypeStaking", [await pumphype.getAddress()], true
+  ) as PumpHypeStaking
 
-  await pumpmonad.setMinter(await pumpmonadstaking.getAddress(), true)
+  await pumphype.setMinter(await pumphypestaking.getAddress(), true)
   
-  await pumpmonadstaking.setAllowNormalUnstake(true)
-  await pumpmonadstaking.setAllowInstantUnstake(true)
-  await pumpmonadstaking.setAllowClaim(true)
-  await pumpmonadstaking.setStakeAssetCap(parseEther("10000"))
-  await pumpmonadstaking.stake({ value: parseEther("0.001") })
+  await pumphypestaking.setAllowNormalUnstake(true)
+  await pumphypestaking.setAllowInstantUnstake(true)
+  await pumphypestaking.setAllowClaim(true)
+  await pumphypestaking.setStakeAssetCap(parseEther("10000"))
+  await pumphypestaking.stake({ value: parseEther("0.001") })
 }
 
 main()

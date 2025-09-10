@@ -4,7 +4,7 @@ import { upgradeContract } from "./utils"
 async function main() {
   await upgradeContract(
     process.env.MONADTEST_MONAD_STAKING!,
-    "PumpMonadStakingTestnet",
+    "PumpHypeStakingTestnet",
     true,
   )
 }

@@ -17,6 +17,13 @@ const config: HardhatUserConfig = {
       accounts: [
         process.env.PRIVATE_KEY_ADMIN!,
       ]
+    },
+    hypetest: {
+      url: "https://rpc.hyperliquid-testnet.xyz/evm",
+      accounts: [
+        process.env.PRIVATE_KEY_ADMIN!,
+      ]
+      // explorer: https://app.hyperliquid-testnet.xyz/explorer
     }
   },
   etherscan: {

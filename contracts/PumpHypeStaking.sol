@@ -15,14 +15,14 @@ using SafeERC20 for IERC20;
 using SafeCast for uint256;
 using Address for address payable;
 
-contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
+contract PumpHypeStaking is Ownable2StepUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
 
     // ============================= Variables =============================
     uint8 constant public MAX_DATE_SLOT = 10;
 
-    PumpToken public pumpMonad;
+    PumpToken public pumpHype;
 
-    // all the following variables are in the same decimal as pumpMonad (18 decimal)
+    // all the following variables are in the same decimal as pumpHype (18 decimal)
     uint256 public totalStakingAmount;       // Current amount of staked amount
     uint256 public totalStakingCap;         // Upper limit of staking amount
     uint256 public totalRequestedAmount;    // Total requested balance
@@ -71,22 +71,22 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
 
     // ======================= Modifier & Initializer ======================
     modifier onlyOperator {
-        require(_msgSender() == operator, "PumpMonad: caller is not the operator");
+        require(_msgSender() == operator, "PumpHype: caller is not the operator");
         _;
     }
 
     modifier allowNormalUnstake {
-        require(featureFlags & _NORMAL_UNSTAKE_FLAG != 0, "PumpMonad: normal unstake is not allowed");
+        require(featureFlags & _NORMAL_UNSTAKE_FLAG != 0, "PumpHype: normal unstake is not allowed");
         _;
     }
     
     modifier allowInstantUnstake {
-        require(featureFlags & _INSTANT_UNSTAKE_FLAG != 0, "PumpMonad: instant unstake is not allowed");
+        require(featureFlags & _INSTANT_UNSTAKE_FLAG != 0, "PumpHype: instant unstake is not allowed");
         _;
     }
     
     modifier allowClaim { 
-        require(featureFlags & _CLAIM_FLAG != 0, "PumpMonad: claim is not allowed");
+        require(featureFlags & _CLAIM_FLAG != 0, "PumpHype: claim is not allowed");
         _;
     }
 
@@ -96,8 +96,8 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
     }
 
     function initialize(address _pumpTokenAddress) public initializer {
-        pumpMonad = PumpToken(_pumpTokenAddress);
-        require(pumpMonad.decimals() == 18, "PumpMonad: invalid PumpMONAD token");
+        pumpHype = PumpToken(_pumpTokenAddress);
+        require(pumpHype.decimals() == 18, "PumpHype: invalid PumpHYPE token");
 
         normalUnstakeFee = 0;     // Means 0%
         instantUnstakeFee = 300;    // Means 3%
@@ -130,21 +130,21 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
     }
 
     function setStakeAssetCap(uint256 newTotalStakingCap) public onlyOwner {
-        require(newTotalStakingCap >= totalStakingAmount, "PumpMonad: staking cap too small");
+        require(newTotalStakingCap >= totalStakingAmount, "PumpHype: staking cap too small");
 
         emit SetStakeAssetCap(totalStakingCap, newTotalStakingCap);
         totalStakingCap = newTotalStakingCap;
     }
 
     function setNormalUnstakeFee(uint256 newNormalUnstakeFee) public onlyOwner {
-        require(newNormalUnstakeFee < 10000, "PumpMonad: fee should be less than 100%");
+        require(newNormalUnstakeFee < 10000, "PumpHype: fee should be less than 100%");
 
         emit SetNormalUnstakeFee(normalUnstakeFee, newNormalUnstakeFee);
         normalUnstakeFee = newNormalUnstakeFee;
     }
 
     function setInstantUnstakeFee(uint256 newInstantUnstakeFee) public onlyOwner {
-        require(newInstantUnstakeFee < 10000, "PumpMonad: fee should be less than 100%");
+        require(newInstantUnstakeFee < 10000, "PumpHype: fee should be less than 100%");
 
         emit SetInstantUnstakeFee(instantUnstakeFee, newInstantUnstakeFee);
         instantUnstakeFee = newInstantUnstakeFee;
@@ -183,7 +183,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
     }
 
     function collectFee() public onlyOwner {
-        require(collectedFee > 0, "PumpMonad: no collected fee");
+        require(collectedFee > 0, "PumpHype: no collected fee");
 
         uint256 oldCollectedFee = collectedFee;
         collectedFee = 0;
@@ -197,11 +197,11 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
     /**
      * @dev Suppose that the total staking amount is X, total unstaking request amount is 
      *  Y, and total unstaking-instantly amount is Z. Then the admin should withdraw X-Z, 
-     *  and then deposit X-Z to Monad chain. Meanwhile, the admin should request withdraw Y
-     *  from Monad chain. `pendingStakeAmount` aims to record `X-Z`.
+     *  and then deposit X-Z to Hype chain. Meanwhile, the admin should request withdraw Y
+     *  from Hype chain. `pendingStakeAmount` aims to record `X-Z`.
      */
     function withdraw() public nonReentrant onlyOperator {
-        require(pendingStakeAmount > 0, "PumpMonad: no pending stake amount");
+        require(pendingStakeAmount > 0, "PumpHype: no pending stake amount");
 
         uint256 oldPendingStakeAmount = pendingStakeAmount;
         pendingStakeAmount = 0;
@@ -215,7 +215,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
      */
     function deposit() public payable nonReentrant onlyOperator {
         uint256 amount = msg.value;
-        require(amount > 0, "PumpMonad: amount should be greater than 0");
+        require(amount > 0, "PumpHype: amount should be greater than 0");
 
         totalClaimableAmount += amount;
         emit AdminDeposit(_msgSender(), amount);
@@ -241,7 +241,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
      */
     function depositToInstantPool() public payable nonReentrant onlyOperator {
         uint256 amount = msg.value;
-        require(amount > 0, "PumpMonad: amount should be greater than 0");
+        require(amount > 0, "PumpHype: amount should be greater than 0");
         
         instantPoolAmount += amount;
         emit AdminDepositToInstantPool(_msgSender(), amount);
@@ -251,8 +251,8 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
      * @dev Withdraw from instant-unstake pool.
      */
     function withdrawFromInstantPool(uint256 amount) public nonReentrant onlyOperator {
-        require(amount > 0, "PumpMonad: amount should be greater than 0");
-        require(amount <= instantPoolAmount, "PumpMonad: insufficient instant pool amount");
+        require(amount > 0, "PumpHype: amount should be greater than 0");
+        require(amount <= instantPoolAmount, "PumpHype: insufficient instant pool amount");
         
         instantPoolAmount -= amount;
         emit AdminWithdrawFromInstantPool(_msgSender(), amount);
@@ -264,10 +264,10 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
     // =========================== User functions ==========================
     function stake() public payable nonReentrant whenNotPaused {
         uint256 amount = msg.value;
-        require(amount > 0, "PumpMonad: amount should be greater than 0");
+        require(amount > 0, "PumpHype: amount should be greater than 0");
         require(
             totalStakingAmount + amount <= totalStakingCap, 
-            "PumpMonad: exceed staking cap"
+            "PumpHype: exceed staking cap"
         );
 
         totalStakingAmount += amount;
@@ -275,7 +275,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
 
         emit Stake(_msgSender(), amount);
 
-        pumpMonad.mint(_msgSender(), amount);
+        pumpHype.mint(_msgSender(), amount);
     }
 
 
@@ -283,10 +283,10 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
         address user = _msgSender();
         uint8 slot = _getDateSlot(block.timestamp);
 
-        require(amount > 0, "PumpMonad: amount should be greater than 0");
+        require(amount > 0, "PumpHype: amount should be greater than 0");
         require(
             block.timestamp - pendingUnstakeTime[user][slot] < _getPeriod()
-            || pendingUnstakeAmount[user][slot] == 0, "PumpMonad: claim the previous unstake first"
+            || pendingUnstakeAmount[user][slot] == 0, "PumpHype: claim the previous unstake first"
         );
 
         pendingUnstakeTime[user][slot] = block.timestamp;
@@ -296,7 +296,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
 
         emit UnstakeRequest(user, amount, slot);
 
-        pumpMonad.burn(user, amount);
+        pumpHype.burn(user, amount);
     }
 
     function claimSlot(uint8 slot) public nonReentrant whenNotPaused allowClaim {
@@ -304,10 +304,10 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
         uint256 amount = pendingUnstakeAmount[user][slot];
         uint256 fee = amount * normalUnstakeFee / 10000;
 
-        require(amount > 0, "PumpMonad: no pending unstake");
+        require(amount > 0, "PumpHype: no pending unstake");
         require(
             block.timestamp - pendingUnstakeTime[user][slot] >= (MAX_DATE_SLOT - 1) * _getPeriod(),
-            "PumpMonad: haven't reached the claimable time"
+            "PumpHype: haven't reached the claimable time"
         );
 
         pendingUnstakeAmount[user][slot] = 0;
@@ -338,8 +338,8 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
         }
         uint256 fee = totalAmount * normalUnstakeFee / 10000;
 
-        require(pendingCount > 0, "PumpMonad: no pending unstake");   
-        require(totalAmount > 0, "PumpMonad: haven't reached the claimable time");
+        require(pendingCount > 0, "PumpHype: no pending unstake");   
+        require(totalAmount > 0, "PumpHype: haven't reached the claimable time");
 
         totalClaimableAmount -= totalAmount;
         totalRequestedAmount -= totalAmount;
@@ -354,8 +354,8 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
         address user = _msgSender();
         uint256 fee = amount * instantUnstakeFee / 10000;
 
-        require(amount > 0, "PumpMonad: amount should be greater than 0");
-        require(amount <= instantPoolAmount + pendingStakeAmount, "PumpMonad: insufficient liquidity");
+        require(amount > 0, "PumpHype: amount should be greater than 0");
+        require(amount <= instantPoolAmount + pendingStakeAmount, "PumpHype: insufficient liquidity");
 
         if (amount <= instantPoolAmount) {
             instantPoolAmount -= amount;
@@ -370,7 +370,7 @@ contract PumpMonadStaking is Ownable2StepUpgradeable, PausableUpgradeable, Reent
 
         emit UnstakeInstant(user, amount);
 
-        pumpMonad.burn(user, amount);
+        pumpHype.burn(user, amount);
         payable(user).sendValue(amount - fee);
     }
 

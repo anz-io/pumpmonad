@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "../PumpMonadStaking.sol";
+import "../PumpHypeStaking.sol";
 
-contract PumpMonadStakingTestnet is PumpMonadStaking {
+contract PumpHypeStakingTestnet is PumpHypeStaking {
 
     function _getPeriod() public override pure returns (uint256) {
         return 1 minutes;

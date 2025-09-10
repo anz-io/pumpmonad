@@ -14,7 +14,7 @@ contract PumpToken is ERC20, Ownable2Step {
         _;
     }
 
-    constructor() ERC20("PumpMONAD", "PumpMONAD") Ownable(_msgSender()) {}
+    constructor() ERC20("PumpHYPE", "PumpHYPE") Ownable(_msgSender()) {}
 
     function setMinter(address minter, bool isMinter_) public onlyOwner {
         isMinter[minter] = isMinter_;

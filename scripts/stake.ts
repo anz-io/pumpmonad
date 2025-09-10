@@ -1,13 +1,13 @@
 import "dotenv/config"
-import { PumpMonadStaking } from "../typechain-types"
+import { PumpHypeStaking } from "../typechain-types"
 import { parseEther } from "ethers"
 import { ethers } from "hardhat"
 
 async function main() {
-  const pumpmonadstaking = await ethers.getContractAt(
-    "PumpMonadStaking", "0xd89318D6F723fc1aeb368F83e789d65b8dAAc516"
-  ) as PumpMonadStaking
-  await pumpmonadstaking.stake({ value: parseEther("0.001") })
+  const pumphypestaking = await ethers.getContractAt(
+    "PumpHypeStaking", "0xd89318D6F723fc1aeb368F83e789d65b8dAAc516"
+  ) as PumpHypeStaking
+  await pumphypestaking.stake({ value: parseEther("0.001") })
 }
 
 main()
